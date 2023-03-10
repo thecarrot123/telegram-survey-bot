@@ -34,6 +34,5 @@ CMD ["python3", "bot.py"]
 
 # Product
 FROM base as product
-RUN [ -f .env.dev ] && export $(cat .env.dev | xargs)
 ENV APP_SETTINGS="flask_config.ProductionConfig"
 CMD ["python3", "bot.py"]
