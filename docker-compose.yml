@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  web:
+    image: telegram_survey_bot:latest
+    volumes:
+      - ./:/app/
+    ports:
+      - 5000:5000
+    env_file:
+      - ./.env.dev
+
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=$POSTGRES_USER
+      - POSTGRES_PASSWORD=$POSTGRES_PASS
+      - POSTGRES_DB=$POSTGRES_DB
+
+volumes:
+  postgres_data:

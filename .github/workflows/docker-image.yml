@@ -1,0 +1,93 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  TEST_IMAGE_NAME: test_image
+  TEST_CONTAINER_NAME: test_container
+  PROD_IMAGE_NAME: telegram_survey_bot
+  PROD_CONTAINER_NAME: telegram_survey_bot
+  SQLALCHEMY_DATABASE_URI: ${{secrets.SQLALCHEMY_DATABASE_URI}}
+  SQLALCHEMY_TEST_DATABASE_URI: ${{secrets.SQLALCHEMY_TEST_DATABASE_URI}}
+  SECRET_KEY: ${{secrets.SECRET_KEY}}
+  BOT_TOKEN: ${{secrets.BOT_TOKEN}}
+  POSTGRES_USER: ${{secrets.POSTGRES_USER}}
+  POSTGRES_PASS: ${{secrets.POSTGRES_PASS}}
+  POSTGRES_DB: telegram_product
+
+
+jobs:
+
+  build_test_image:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v3
+    - name: build-test
+      run: |
+        echo "Building Docker Test Image..."
+        docker build . \
+        -t $TEST_IMAGE_NAME \
+        --target test \
+        --build-arg SQLALCHEMY_TEST_DATABASE_URI \
+        --build-arg SECRET_KEY \
+        --build-arg BOT_TOKEN
+  
+  run_tests:
+    needs: build_test_image
+    runs-on: self-hosted
+    steps:
+    - name: run-tests
+      run: |
+        echo $SQLALCHEMY_TEST_DATABASE_URI
+        echo "Running unit tests... Running a test container."
+        echo "Deploying test application..."
+        CID=$(docker ps -a -f name=^/${TEST_CONTAINER_NAME}$)
+        if [ "${CID}" ]; then
+          echo "Test container exists"
+          echo "Removing test container"
+          docker rm $TEST_CONTAINER_NAME -f
+        fi
+        echo "Creating test container."
+        docker run --name $TEST_CONTAINER_NAME $TEST_IMAGE_NAME
+        unset CID
+        docker rm -f $TEST_CONTAINER_NAME
+        echo "Passed!"
+
+  build_image:
+    needs: run_tests
+    runs-on: self-hosted
+    steps:
+    - name: build product image
+      run: |
+        docker build . \
+        -t $PROD_IMAGE_NAME \
+        --target product \
+        --build-arg SQLALCHEMY_DATABASE_URI \
+        --build-arg SECRET_KEY \
+        --build-arg BOT_TOKEN
+  
+  deploy_runner:
+    needs: build_image
+    runs-on: self-hosted
+    steps:
+      - name: run docker container on runner machine
+        run: |
+          echo "Deploying application..."
+          CID=$(docker ps -q -f status=running -f name=^/${PROD_IMAGE_NAME}$)
+          if [ "${CID}" ]; then
+            echo "Container exists"
+            echo "Removing container"
+            docker rm -f $PROD_IMAGE_NAME
+          fi
+          echo "Creating container"
+          unset CID
+          docker-compose build \
+          --build-arg POSTGRES_USER \
+          --build-arg POSTGRES_PASS \
+          --build-arg POSTGRES_DB
+          docker-compose up -d
+          echo "Container is running."
