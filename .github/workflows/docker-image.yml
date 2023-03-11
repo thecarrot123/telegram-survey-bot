@@ -12,7 +12,7 @@ env:
   PROD_IMAGE_NAME: telegram_survey_bot
   PROD_CONTAINER_NAME: telegram_survey_bot
   SQLALCHEMY_DATABASE_URI: ${{secrets.SQLALCHEMY_DATABASE_URI}}
-  SQLALCHEMY_TEST_DATABASE_URI: ${{secrets.SQLALCHEMY_TEST_DATABASE_URI}}
+  SQLALCHEMY_TEST_DATABASE_URI: "sqlite:///test.sqlite3"
   SECRET_KEY: ${{secrets.SECRET_KEY}}
   BOT_TOKEN: ${{secrets.BOT_TOKEN}}
   POSTGRES_USER: ${{secrets.POSTGRES_USER}}
